@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import requests
 import matplotlib.pyplot as plt
 from PIL import Image
-import io
-import time
+import joblib
+import numpy as np
 import os
+import time
 
 # Configuration
 st.set_page_config(
@@ -55,7 +55,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Chemin des images locales
+# Chargement du modèle et du scaler
+try:
+    model = joblib.load('random_forest_model.sav')
+    scaler = joblib.load('scaler.sav')
+except Exception as e:
+    st.error(f"Erreur lors du chargement du modèle : {str(e)}")
+    st.stop()
+
+# Chemins des images
 GENUINE_IMAGE_PATH = os.path.join("images", "vrai.png")
 FAKE_IMAGE_PATH = os.path.join("images", "faux.png")
 
@@ -67,24 +75,75 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Section À propos 
-st.markdown("---")
-st.markdown("""
-### À propos de cette application
-Cet outil analyse les caractéristiques géométriques des billets en euros pour détecter les contrefaçons.
-Les valeurs manquantes sont automatiquement remplacées par la médiane des valeurs existantes.
-""")
+# Fonction de prédiction locale
+def local_predict(data):
+    """Effectue les prédictions directement sans API"""
+    # Nettoyage des colonnes
+    required_columns = ['diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
+    
+    # Mapping des noms de colonnes
+    column_mapping = {
+        'diagonal': ['diagonal', 'dingmail', 'diagonale'],
+        'height_left': ['height_left', 'hauteur_gauche'],
+        'height_right': ['height_right', 'hauteur_droite'],
+        'margin_low': ['margin_low', 'margin_bow', 'marge_basse'],
+        'margin_up': ['margin_up', 'marge_haute'],
+        'length': ['length', 'longueur']
+    }
+    
+    # Standardisation des noms de colonnes
+    for standard_name, variants in column_mapping.items():
+        for variant in variants:
+            if variant in data.columns:
+                data.rename(columns={variant: standard_name}, inplace=True)
+                break
+    
+    # Vérification des colonnes requises
+    missing_cols = [col for col in required_columns if col not in data.columns]
+    if missing_cols:
+        raise ValueError(f"Colonnes manquantes : {missing_cols}")
+    
+    # Prétraitement
+    data = data[required_columns].apply(pd.to_numeric, errors='coerce')
+    data = data.fillna(data.median())
+    
+    # Prédiction
+    X_scaled = scaler.transform(data)
+    predictions = model.predict(X_scaled)
+    probabilities = model.predict_proba(X_scaled)
+    
+    # Formatage des résultats
+    results = []
+    for i, (pred, prob) in enumerate(zip(predictions, probabilities)):
+        results.append({
+            "id": i + 1,
+            "prediction": "Genuine" if pred else "Fake",
+            "probability": float(prob[1] if pred else prob[0]),
+            "features": data.iloc[i].to_dict()
+        })
+    
+    # Calcul des statistiques
+    genuine_count = int(sum(predictions))
+    fake_count = int(len(predictions) - genuine_count)
+    
+    return {
+        "predictions": results,
+        "stats": {
+            "total": len(predictions),
+            "genuine": genuine_count,
+            "fake": fake_count,
+            "genuine_percentage": round(genuine_count / len(predictions) * 100, 2),
+            "fake_percentage": round(fake_count / len(predictions) * 100, 2)
+        }
+    }
 
 def display_billet_details(billet):
+    """Affiche les détails d'un billet"""
     col1, col2 = st.columns([1, 3])
     
     with col1:
-        # Utilisation des images locales
         try:
-            if billet['prediction'] == 'Genuine':
-                image = Image.open(GENUINE_IMAGE_PATH)
-            else:
-                image = Image.open(FAKE_IMAGE_PATH)
+            image = Image.open(GENUINE_IMAGE_PATH if billet['prediction'] == 'Genuine' else FAKE_IMAGE_PATH)
             st.image(image, width=200)
         except Exception as e:
             st.error(f"Image non trouvée: {e}")
@@ -92,7 +151,6 @@ def display_billet_details(billet):
     
     with col2:
         st.subheader(f"Billet #{billet['id']}")
-        
         if billet['prediction'] == 'Genuine':
             st.success(f"Authentique ({(billet['probability']*100):.1f}% de confiance)")
         else:
@@ -111,7 +169,14 @@ def display_billet_details(billet):
         </div>
         """, unsafe_allow_html=True)
 
-# Interface utilisateur
+# Interface principale
+st.markdown("---")
+st.markdown("""
+### À propos de cette application
+Cet outil analyse les caractéristiques géométriques des billets en euros pour détecter les contrefaçons.
+Les valeurs manquantes sont automatiquement remplacées par la médiane des valeurs existantes.
+""")
+
 uploaded_file = st.file_uploader(
     "Importez un fichier CSV contenant les mesures des billets", 
     type=["csv", "txt"],
@@ -121,8 +186,6 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     try:
         data = pd.read_csv(uploaded_file, sep=None, engine='python')
-        
-        # Nettoyage des noms de colonnes
         data.columns = data.columns.str.strip().str.lower().str.replace(' ', '_')
         
         st.subheader("Aperçu des données")
@@ -133,77 +196,64 @@ if uploaded_file is not None:
             status_text = st.empty()
             
             try:
+                # Animation de chargement
                 for percent_complete in range(0, 101, 10):
                     progress_bar.progress(percent_complete)
                     status_text.text(f"Analyse en cours... {percent_complete}%")
                     time.sleep(0.1)
                 
-                csv_buffer = io.StringIO()
-                data.to_csv(csv_buffer, index=False)
-                csv_buffer.seek(0)
+                # Prédiction locale
+                results = local_predict(data)
                 
-                response = requests.post(
-                    "http://localhost:8000/predict",
-                    files={'file': ('billets.csv', csv_buffer.getvalue())}
+                progress_bar.empty()
+                status_text.empty()
+                
+                # Affichage des résultats
+                st.subheader("Résultats globaux")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-box">
+                        <h3>Total</h3>
+                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['total']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-box">
+                        <h3>Vrais</h3>
+                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['genuine']} ({results['stats']['genuine_percentage']:.1f}%)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-box">
+                        <h3>Faux</h3>
+                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['fake']} ({results['stats']['fake_percentage']:.1f}%)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Graphique
+                fig, ax = plt.subplots(figsize=(8, 6))
+                colors = ['#d4a017', '#f5d76e']
+                ax.pie(
+                    [results['stats']['genuine'], results['stats']['fake']],
+                    labels=['Vrais', 'Faux'],
+                    colors=colors,
+                    autopct='%1.1f%%',
+                    startangle=90,
+                    textprops={'fontsize': 12}
                 )
+                ax.axis('equal')
+                st.pyplot(fig)
                 
-                if response.status_code == 200:
-                    progress_bar.empty()
-                    status_text.empty()
-                    results = response.json()
-                    
-                    # Affichage des résultats globaux
-                    st.subheader("Résultats globaux")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.markdown(f"""
-                        <div class="metric-box">
-                            <h3>Total</h3>
-                            <p style="font-size: 24px; font-weight: bold;">{results['stats']['total']}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown(f"""
-                        <div class="metric-box">
-                            <h3>Vrais</h3>
-                            <p style="font-size: 24px; font-weight: bold;">{results['stats']['genuine']} ({results['stats']['genuine_percentage']:.1f}%)</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col3:
-                        st.markdown(f"""
-                        <div class="metric-box">
-                            <h3>Faux</h3>
-                            <p style="font-size: 24px; font-weight: bold;">{results['stats']['fake']} ({results['stats']['fake_percentage']:.1f}%)</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # Graphique
-                    fig, ax = plt.subplots(figsize=(8, 6))
-                    colors = ['#d4a017', '#f5d76e']
-                    ax.pie(
-                        [results['stats']['genuine'], results['stats']['fake']],
-                        labels=['Vrais', 'Faux'],
-                        colors=colors,
-                        autopct='%1.1f%%',
-                        startangle=90,
-                        textprops={'fontsize': 12}
-                    )
-                    ax.axis('equal')
-                    st.pyplot(fig)
-                    
-                    # Détails par billet
-                    st.subheader("Analyse détaillée par billet")
-                    for billet in results['predictions']:
-                        display_billet_details(billet)
-                
-                else:
-                    progress_bar.empty()
-                    status_text.empty()
-                    st.error(f"Erreur API: {response.text}")
+                # Détails par billet
+                st.subheader("Analyse détaillée par billet")
+                for billet in results['predictions']:
+                    display_billet_details(billet)
             
             except Exception as e:
                 progress_bar.empty()
@@ -212,4 +262,3 @@ if uploaded_file is not None:
     
     except Exception as e:
         st.error(f"Erreur lors de la lecture du fichier: {str(e)}")
-
