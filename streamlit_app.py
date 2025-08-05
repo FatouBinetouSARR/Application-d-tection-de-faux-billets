@@ -78,30 +78,7 @@ st.markdown("""
 # Fonction de prédiction locale
 def local_predict(data):
     """Effectue les prédictions directement sans API"""
-    # Nettoyage des colonnes
     required_columns = ['diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
-    
-    # Mapping des noms de colonnes
-    column_mapping = {
-        'diagonal': ['diagonal', 'dingmail', 'diagonale'],
-        'height_left': ['height_left', 'hauteur_gauche'],
-        'height_right': ['height_right', 'hauteur_droite'],
-        'margin_low': ['margin_low', 'margin_bow', 'marge_basse'],
-        'margin_up': ['margin_up', 'marge_haute'],
-        'length': ['length', 'longueur']
-    }
-    
-    # Standardisation des noms de colonnes
-    for standard_name, variants in column_mapping.items():
-        for variant in variants:
-            if variant in data.columns:
-                data.rename(columns={variant: standard_name}, inplace=True)
-                break
-    
-    # Vérification des colonnes requises
-    missing_cols = [col for col in required_columns if col not in data.columns]
-    if missing_cols:
-        raise ValueError(f"Colonnes manquantes : {missing_cols}")
     
     # Prétraitement
     data = data[required_columns].apply(pd.to_numeric, errors='coerce')
@@ -180,13 +157,19 @@ Les valeurs manquantes sont automatiquement remplacées par la médiane des vale
 uploaded_file = st.file_uploader(
     "Importez un fichier CSV contenant les mesures des billets", 
     type=["csv", "txt"],
-    help="Le fichier doit contenir les mesures géométriques des billets"
+    help="Le fichier doit contenir 7 colonnes séparées par ';' sans en-tête : is_genuine,diagonal,height_left,height_right,margin_low,margin_up,length"
 )
 
 if uploaded_file is not None:
     try:
-        data = pd.read_csv(uploaded_file, sep=None, engine='python')
-        data.columns = data.columns.str.strip().str.lower().str.replace(' ', '_')
+        # Lecture du CSV avec séparateur ; et sans en-tête
+        data = pd.read_csv(uploaded_file, sep=';', header=None)
+        
+        # Attribution des noms de colonnes
+        data.columns = ['is_genuine', 'diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
+        
+        # Conversion de la colonne is_genuine
+        data['is_genuine'] = data['is_genuine'].astype(bool)
         
         st.subheader("Aperçu des données")
         st.dataframe(data.head())
@@ -202,8 +185,8 @@ if uploaded_file is not None:
                     status_text.text(f"Analyse en cours... {percent_complete}%")
                     time.sleep(0.1)
                 
-                # Prédiction locale
-                results = local_predict(data)
+                # Prédiction locale (on exclut la colonne is_genuine)
+                results = local_predict(data.drop(columns=['is_genuine']))
                 
                 progress_bar.empty()
                 status_text.empty()
