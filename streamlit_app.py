@@ -149,10 +149,22 @@ def display_billet_details(billet):
 # Interface principale
 st.markdown("---")
 st.markdown("""
-### À propos de cette application
-Cet outil analyse les caractéristiques géométriques des billets en euros pour détecter les contrefaçons.
-Les valeurs manquantes sont automatiquement remplacées par la médiane des valeurs existantes.
-""")
+### À propos
+Bienvenue dans notre application de détection automatique de faux billets !
+
+Cet outil a été conçu pour analyser rapidement et efficacement les caractéristiques géométriques des billets en euros afin d’évaluer leur authenticité. Grâce à un modèle d’apprentissage automatique basé sur la forêt aléatoire (Random Forest), l’application identifie les billets comme authentiques ou contrefaits, avec un niveau de confiance exprimé en pourcentage.
+
+Fonctionnalités clés :
+
+Analyse de 6 mesures géométriques : longueur, hauteur (gauche/droite), marges (haut/bas), diagonale.
+
+Traitement automatique des valeurs manquantes.
+
+Affichage clair des résultats sous forme de statistiques, graphiques et détails par billet.
+
+Interface intuitive permettant l’import de fichiers CSV.
+
+Que vous soyez professionnel de la sécurité, chercheur ou simplement curieux, cette application vous offre un aperçu puissant de ce que l’IA et les données peuvent apporter à la lutte contre la falsification monétaire.""")
 
 uploaded_file = st.file_uploader(
     "Importez un fichier CSV contenant les mesures des billets", 
