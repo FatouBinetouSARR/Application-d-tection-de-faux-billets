@@ -1,73 +1,105 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
-import joblib
-import numpy as np
+import requests
+import plotly.express as px
+import base64
+import io
 import os
-import time
+import numpy as np
+from time import time
 
-# Configuration
+# Configuration de la page
 st.set_page_config(
-    page_title="Détection de Faux et Vrais Billets",
+    page_title="Détection de Faux Billets",
     page_icon="💰",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# CSS personnalisé
+# Initialisation des variables de session
+if 'results' not in st.session_state:
+    st.session_state.results = None
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'last_update' not in st.session_state:
+    st.session_state.last_update = 0
+
+# Chemins des images locales
+GENUINE_IMG_PATH = os.path.join("images", "vrai.png")
+FAKE_IMG_PATH = os.path.join("images", "faux.png")
+
+# Fonction pour charger les images
+@st.cache_resource
+def load_images():
+    try:
+        with open(GENUINE_IMG_PATH, "rb") as img_file:
+            genuine_img = base64.b64encode(img_file.read()).decode('utf-8')
+        with open(FAKE_IMG_PATH, "rb") as img_file:
+            fake_img = base64.b64encode(img_file.read()).decode('utf-8')
+        return genuine_img, fake_img
+    except Exception as e:
+        st.error(f"Erreur de chargement des images: {str(e)}")
+        return None, None
+
+genuine_img, fake_img = load_images()
+
+# CSS optimisé
 st.markdown("""
 <style>
-.stApp {
-    background-color: #fff9e6;
+:root {
+    --primary: #d4a017;
+    --secondary: #fff9e6;
+    --success: #28a745;
+    --danger: #dc3545;
+    font-family: 'Arial', sans-serif;
 }
+.stApp { background-color: var(--secondary); }
 .header {
-    background-color: #d4a017;
+    background-color: var(--primary);
     color: white;
     padding: 15px;
     border-radius: 10px;
     margin-bottom: 20px;
-}
-.billet-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-    gap: 20px;
-}
-.billet-image {
-    width: 200px;
-    border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
-.metric-box {
-    background-color: #fff9e6;
-    border-radius: 8px;
-    padding: 15px;
-    border: 1px solid #d4a017;
-    text-align: center;
-    margin: 10px;
+.card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-.feature-details {
-    background-color: #fff9e6;
-    padding: 15px;
+.genuine-card { border-left: 4px solid var(--success); }
+.fake-card { border-left: 4px solid var(--danger); }
+.stat-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
+}
+.stat-card {
+    text-align: center;
+    padding: 0.8rem;
     border-radius: 8px;
-    margin-top: 10px;
+    background-color: white;
+    border: 1px solid var(--primary);
+}
+.probability-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    margin: 0.3rem 0;
+}
+.billet-image {
+    border-radius: 6px;
+    width: 100px;
+    border: 2px solid white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Chargement du modèle et du scaler
-try:
-    model = joblib.load('random_forest_model.sav')
-    scaler = joblib.load('scaler.sav')
-except Exception as e:
-    st.error(f"Erreur lors du chargement du modèle : {str(e)}")
-    st.stop()
-
-# Chemins des images
-GENUINE_IMAGE_PATH = os.path.join("images", "vrai.png")
-FAKE_IMAGE_PATH = os.path.join("images", "faux.png")
-
-# Titre
+# Titre de l'application
 st.markdown("""
 <div class="header">
     <h1 style='text-align: center; margin: 0;'>Détection Automatique de Faux Billets</h1>
@@ -75,185 +107,173 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Fonction de prédiction locale
-def local_predict(data):
-    """Effectue les prédictions directement sans API"""
-    required_columns = ['diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
-    
-    # Prétraitement
-    data = data[required_columns].apply(pd.to_numeric, errors='coerce')
-    data = data.fillna(data.median())
-    
-    # Prédiction
-    X_scaled = scaler.transform(data)
-    predictions = model.predict(X_scaled)
-    probabilities = model.predict_proba(X_scaled)
-    
-    # Formatage des résultats
-    results = []
-    for i, (pred, prob) in enumerate(zip(predictions, probabilities)):
-        results.append({
-            "id": i + 1,
-            "prediction": "Genuine" if pred else "Fake",
-            "probability": float(prob[1] if pred else prob[0]),
-            "features": data.iloc[i].to_dict()
-        })
-    
-    # Calcul des statistiques
-    genuine_count = int(sum(predictions))
-    fake_count = int(len(predictions) - genuine_count)
-    
-    return {
-        "predictions": results,
-        "stats": {
-            "total": len(predictions),
-            "genuine": genuine_count,
-            "fake": fake_count,
-            "genuine_percentage": round(genuine_count / len(predictions) * 100, 2),
-            "fake_percentage": round(fake_count / len(predictions) * 100, 2)
-        }
-    }
-
-def display_billet_details(billet):
-    """Affiche les détails d'un billet"""
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        try:
-            image = Image.open(GENUINE_IMAGE_PATH if billet['prediction'] == 'Genuine' else FAKE_IMAGE_PATH)
-            st.image(image, width=200)
-        except Exception as e:
-            st.error(f"Image non trouvée: {e}")
-            st.image("https://via.placeholder.com/200", width=200)
-    
-    with col2:
-        st.subheader(f"Billet #{billet['id']}")
-        if billet['prediction'] == 'Genuine':
-            st.success(f"Authentique ({(billet['probability']*100):.1f}% de confiance)")
-        else:
-            st.error(f"Contrefait ({(billet['probability']*100):.1f}% de confiance)")
-        
-        features = billet.get('features', {})
-        st.markdown(f"""
-        <div class="feature-details">
-            <strong>Caractéristiques:</strong><br>
-            - Longueur: {features.get('length', 'N/A'):.2f} mm<br>
-            - Hauteur gauche: {features.get('height_left', 'N/A'):.2f} mm<br>
-            - Hauteur droite: {features.get('height_right', 'N/A'):.2f} mm<br>
-            - Marge supérieure: {features.get('margin_up', 'N/A'):.2f} mm<br>
-            - Marge inférieure: {features.get('margin_low', 'N/A'):.2f} mm<br>
-            - Diagonale: {features.get('diagonal', 'N/A'):.2f} mm
-        </div>
-        """, unsafe_allow_html=True)
-
 # Interface principale
 st.markdown("---")
+st.markdown("### À propos")
 st.markdown("""
-### À propos
-Bienvenue dans notre application de détection automatique de faux billets !
+Bienvenue dans notre application de détection automatique de faux billets en euros.
 
-Cet outil a été conçu pour analyser rapidement et efficacement les caractéristiques géométriques des billets en euros afin d’évaluer leur authenticité. Grâce à un modèle d’apprentissage automatique basé sur la forêt aléatoire (Random Forest), l’application identifie les billets comme authentiques ou contrefaits, avec un niveau de confiance exprimé en pourcentage.
+Cette application permet d'analyser les caractéristiques géométriques des billets pour déterminer leur authenticité avec une précision de 98%.
 
-Fonctionnalités clés :
+**Fonctionnalités :**
+- Analyse de 6 paramètres géométriques
+- Interface intuitive
+- Résultats détaillés avec niveaux de confiance
+""")
 
-Analyse de 6 mesures géométriques : longueur, hauteur (gauche/droite), marges (haut/bas), diagonale.
-
-Traitement automatique des valeurs manquantes.
-
-Affichage clair des résultats sous forme de statistiques, graphiques et détails par billet.
-
-Interface intuitive permettant l’import de fichiers CSV.
-
-Que vous soyez professionnel de la sécurité, chercheur ou simplement curieux, cette application vous offre un aperçu puissant de ce que l’IA et les données peuvent apporter à la lutte contre la falsification monétaire.""")
-
+# Section Analyse
 uploaded_file = st.file_uploader(
-    "Importez un fichier CSV contenant les mesures des billets", 
-    type=["csv", "txt"],
-    help="Le fichier doit contenir 7 colonnes séparées par ';' sans en-tête : is_genuine,diagonal,height_left,height_right,margin_low,margin_up,length"
+    "📤 Faites glisser et déposez votre fichier CSV ici", 
+    type=["csv"],
+    help="Le fichier doit contenir les colonnes: length, height_left, height_right, margin_up, margin_low, diagonal"
 )
 
 if uploaded_file is not None:
     try:
-        # Lecture du CSV avec séparateur ; et sans en-tête
-        data = pd.read_csv(uploaded_file, sep=';', header=None)
+        @st.cache_data(ttl=3600, show_spinner="Chargement des données...")
+        def load_data(uploaded_file):
+            return pd.read_csv(uploaded_file, sep=';')
         
-        # Attribution des noms de colonnes
-        data.columns = ['is_genuine', 'diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
+        st.session_state.df = load_data(uploaded_file)
         
-        # Conversion de la colonne is_genuine
-        data['is_genuine'] = data['is_genuine'].astype(bool)
+        with st.expander("🔍 Aperçu des données (cliquez pour développer)", expanded=False):
+            st.dataframe(st.session_state.df.head(), height=210, use_container_width=True)
         
-        st.subheader("Aperçu des données")
-        st.dataframe(data.head())
-        
-        if st.button("Lancer la détection", type="primary"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            try:
-                # Animation de chargement
-                for percent_complete in range(0, 101, 10):
-                    progress_bar.progress(percent_complete)
-                    status_text.text(f"Analyse en cours... {percent_complete}%")
-                    time.sleep(0.1)
-                
-                # Prédiction locale (on exclut la colonne is_genuine)
-                results = local_predict(data.drop(columns=['is_genuine']))
-                
-                progress_bar.empty()
-                status_text.empty()
-                
-                # Affichage des résultats
-                st.subheader("Résultats globaux")
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.markdown(f"""
-                    <div class="metric-box">
-                        <h3>Total</h3>
-                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['total']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    st.markdown(f"""
-                    <div class="metric-box">
-                        <h3>Vrais</h3>
-                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['genuine']} ({results['stats']['genuine_percentage']:.1f}%)</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col3:
-                    st.markdown(f"""
-                    <div class="metric-box">
-                        <h3>Faux</h3>
-                        <p style="font-size: 24px; font-weight: bold;">{results['stats']['fake']} ({results['stats']['fake_percentage']:.1f}%)</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Graphique
-                fig, ax = plt.subplots(figsize=(8, 6))
-                colors = ['#d4a017', '#f5d76e']
-                ax.pie(
-                    [results['stats']['genuine'], results['stats']['fake']],
-                    labels=['Vrais', 'Faux'],
-                    colors=colors,
-                    autopct='%1.1f%%',
-                    startangle=90,
-                    textprops={'fontsize': 12}
-                )
-                ax.axis('equal')
-                st.pyplot(fig)
-                
-                # Détails par billet
-                st.subheader("Analyse détaillée par billet")
-                for billet in results['predictions']:
-                    display_billet_details(billet)
-            
-            except Exception as e:
-                progress_bar.empty()
-                status_text.empty()
-                st.error(f"Erreur lors de l'analyse: {str(e)}")
-    
+        if st.button("🔎 Lancer l'analyse", key="analyze_btn", type="primary"):
+            with st.spinner("Analyse en cours... Veuillez patienter"):
+                try:
+                    file_bytes = io.BytesIO(uploaded_file.getvalue())
+                    files = {"file": (uploaded_file.name, file_bytes, "text/csv")}
+                    
+                    response = requests.post(
+                        "http://localhost:8000/predict", 
+                        files=files, 
+                        timeout=10
+                    )
+                    response.raise_for_status()
+                    
+                    st.session_state.results = response.json()
+                    st.session_state.last_update = time()
+                    st.toast("✅ Analyse terminée avec succès !")
+                    st.rerun()
+
+                except requests.exceptions.RequestException as e:
+                    st.error(f"❌ Erreur de connexion à l'API: {str(e)}")
+                    st.session_state.results = None
+                except Exception as e:
+                    st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
+                    st.session_state.results = None
+
     except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier: {str(e)}")
+        st.error(f"❌ Erreur de lecture du fichier: {str(e)}")
+
+# Affichage des résultats
+if st.session_state.results:
+    predictions = st.session_state.results.get('predictions', [])
+    
+    if not predictions:
+        st.warning("⚠️ Aucun résultat à afficher")
+    else:
+        st.markdown("## 📊 Résultats de la détection")
+        st.markdown("---")
+        
+        # Affichage paginé des billets
+        page_size = 10
+        page_number = st.number_input('Page', min_value=1, max_value=int(np.ceil(len(predictions)/page_size)), value=1)
+        start_idx = (page_number-1)*page_size
+        end_idx = start_idx + page_size
+        
+        for pred in predictions[start_idx:end_idx]:
+            is_genuine = pred.get('prediction', '').lower() == 'genuine'
+            prob = pred.get('probability', 0)
+            prob = prob if is_genuine else (1 - prob)
+            prob_percent = min(100, max(0, prob * 100))  # Garantit entre 0 et 100
+            color = "#28a745" if is_genuine else "#dc3545"
+            status = "Authentique ✅" if is_genuine else "Faux ❌"
+            
+            st.markdown(f"""
+            <div class="card {'genuine-card' if is_genuine else 'fake-card'}">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0; color: {color}; font-size: 1.1rem;">Billet n°{pred.get('id', 'N/A')}</h3>
+                        <p style="margin: 0.3rem 0; font-size: 0.9rem;">
+                            Statut: <strong>{status}</strong>
+                        </p>
+                        <p style="margin: 0.3rem 0; font-size: 0.9rem;">
+                            Confiance: <strong>{prob_percent:.1f}%</strong>
+                        </p>
+                        <div class="probability-bar">
+                            <div style="height: 100%; width: {prob_percent}%; background: {color}; border-radius: 4px;"></div>
+                        </div>
+                    </div>
+                    <img src="data:image/png;base64,{genuine_img if is_genuine else fake_img}" 
+                         class="billet-image">
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Statistiques
+        st.markdown("---")
+        st.markdown("### 📈 Statistiques globales")
+        
+        genuine_count = sum(1 for p in predictions if p.get('prediction', '').lower() == 'genuine')
+        fake_count = len(predictions) - genuine_count
+        
+        st.markdown("""
+        <div class="stat-container">
+            <div class="stat-card">
+                <h3>Total</h3>
+                <p style="font-size: 24px; color: var(--primary);">{len(predictions)}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Authentiques</h3>
+                <p style="font-size: 24px; color: var(--success);">{genuine_count} ({genuine_count/len(predictions)*100:.1f}%)</p>
+            </div>
+            <div class="stat-card">
+                <h3>Faux</h3>
+                <p style="font-size: 24px; color: var(--danger);">{fake_count} ({fake_count/len(predictions)*100:.1f}%)</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Graphiques
+        st.markdown("### 📊 Visualisations")
+        
+        tab1, tab2 = st.tabs(["Répartition", "Confiance moyenne"])
+        
+        with tab1:
+            fig_pie = px.pie(
+                names=['Authentiques', 'Faux'],
+                values=[genuine_count, fake_count],
+                color_discrete_sequence=["#28a745", "#dc3545"],
+                hole=0.3,
+                template="plotly_white"
+            )
+            fig_pie.update_layout(
+                margin=dict(t=0, b=0, l=0, r=0),
+                height=300
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        with tab2:
+            genuine_probs = [p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'genuine']
+            fake_probs = [1-p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'fake']
+            
+            avg_genuine = np.mean(genuine_probs)*100 if genuine_probs else 0
+            avg_fake = np.mean(fake_probs)*100 if fake_probs else 0
+            
+            fig_bar = px.bar(
+                x=['Authentiques', 'Faux'],
+                y=[avg_genuine, avg_fake],
+                color=['Authentiques', 'Faux'],
+                color_discrete_map={'Authentiques': '#28a745', 'Faux': '#dc3545'},
+                text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
+                labels={'x': '', 'y': 'Confiance moyenne (%)'},
+                template="plotly_white"
+            )
+            fig_bar.update_layout(
+                margin=dict(t=0, b=0, l=0, r=0),
+                height=300,
+                yaxis_range=[0, 100]
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
