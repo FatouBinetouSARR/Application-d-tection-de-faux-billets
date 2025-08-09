@@ -7,7 +7,7 @@ import io
 import os
 import numpy as np
 from time import time
-import joblib  # Pour charger le modèle directement
+import joblib
 
 # Configuration de la page
 st.set_page_config(
@@ -54,7 +54,8 @@ def load_images():
         return None, None
 
 genuine_img, fake_img = load_images()
- #CSS  
+
+# CSS optimisé
 st.markdown("""
 <style>
 :root {
@@ -66,10 +67,8 @@ st.markdown("""
     font-family: 'Arial', sans-serif;
 }
 
-/* Application */
 .stApp { background-color: var(--secondary); }
 
-/* Header */
 .header {
     background-color: var(--primary);
     color: white;
@@ -79,7 +78,6 @@ st.markdown("""
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* Cartes */
 .card {
     background-color: white;
     border-radius: 10px;
@@ -90,7 +88,6 @@ st.markdown("""
 .genuine-card { border-left: 4px solid var(--success); }
 .fake-card { border-left: 4px solid var(--danger); }
 
-/* Statistiques */
 .stat-container {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -99,13 +96,22 @@ st.markdown("""
 }
 .stat-card {
     text-align: center;
-    padding: 0.8rem;
+    padding: 1rem;
     border-radius: 8px;
     background-color: white;
     border: 1px solid var(--primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.stat-card h3 {
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+.stat-card p {
+    margin: 0;
+    line-height: 1.4;
 }
 
-/* Barre de probabilité */
 .probability-bar {
     height: 8px;
     border-radius: 4px;
@@ -113,14 +119,12 @@ st.markdown("""
     margin: 0.3rem 0;
 }
 
-/* Image des billets */
 .billet-image {
     border-radius: 6px;
     width: 100px;
     border: 2px solid white;
 }
 
-/* Boutons */
 .stButton>button {
     background-color: var(--primary);
     color: white;
@@ -128,34 +132,34 @@ st.markdown("""
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-weight: bold;
+    transition: all 0.3s ease;
 }
-
 .stButton>button:hover {
     background-color: var(--primary-dark);
-    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .stFileUploader>div>div>button {
     background-color: var(--primary);
     color: white;
     border-radius: 8px;
+    transition: all 0.3s ease;
 }
-
 .stFileUploader>div>div>button:hover {
     background-color: var(--primary-dark);
-    color: white;
+    transform: translateY(-2px);
 }
 
-/* Onglets */
 .stTabs [data-baseweb="tab-list"] {
     gap: 10px;
+    margin-bottom: 1rem;
 }
-
 .stTabs [data-baseweb="tab"] {
     padding: 8px 16px;
     border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
 }
-
 .stTabs [aria-selected="true"] {
     background-color: var(--primary);
     color: white;
@@ -194,10 +198,9 @@ uploaded_file = st.file_uploader(
 def predict_data(df):
     """Fonction pour faire les prédictions directement dans Streamlit"""
     try:
-        # Nettoyage des colonnes
+        # Nettoyage et vérification des colonnes
         df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
         
-        # Mapping des colonnes
         column_mapping = {
             'diagonal': ['diagonal', 'dingmail', 'diagonale'],
             'height_left': ['height_left', 'hauteur_gauche'],
@@ -213,19 +216,15 @@ def predict_data(df):
                     df.rename(columns={variant: standard_name}, inplace=True)
                     break
         
-        # Vérification des colonnes
         required_columns = ['diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
         missing_cols = [col for col in required_columns if col not in df.columns]
         if missing_cols:
             st.error(f"Colonnes manquantes: {missing_cols}")
             return None
         
-        # Prétraitement
-        df = df[required_columns].apply(pd.to_numeric, errors='coerce')
-        df = df.fillna(df.median())
+        # Prétraitement et prédiction
+        df = df[required_columns].apply(pd.to_numeric, errors='coerce').fillna(df.median())
         X_scaled = scaler.transform(df)
-        
-        # Prédictions
         predictions = model.predict(X_scaled)
         probabilities = model.predict_proba(X_scaled)
         
@@ -241,16 +240,14 @@ def predict_data(df):
         
         # Statistiques
         genuine_count = int(sum(predictions))
-        fake_count = int(len(predictions) - genuine_count)
-        
         return {
             "predictions": results,
             "stats": {
                 "total": len(predictions),
                 "genuine": genuine_count,
-                "fake": fake_count,
-                "genuine_percentage": round(genuine_count / len(predictions) * 100, 2),
-                "fake_percentage": round(fake_count / len(predictions) * 100, 2)
+                "fake": len(predictions) - genuine_count,
+                "genuine_percentage": round(genuine_count / len(predictions) * 100, 1),
+                "fake_percentage": round((len(predictions) - genuine_count) / len(predictions) * 100, 1)
             }
         }
         
@@ -279,17 +276,16 @@ if uploaded_file is not None:
                         st.session_state.last_update = time()
                         st.toast("✅ Analyse terminée avec succès !")
                         st.rerun()
-
                 except Exception as e:
                     st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
                     st.session_state.results = None
-
     except Exception as e:
         st.error(f"❌ Erreur de lecture du fichier: {str(e)}")
 
-# Affichage des résultats (identique à votre version originale)
+# Affichage des résultats
 if st.session_state.results:
     predictions = st.session_state.results.get('predictions', [])
+    stats = st.session_state.results.get('stats', {})
     
     if not predictions:
         st.warning("⚠️ Aucun résultat à afficher")
@@ -299,7 +295,9 @@ if st.session_state.results:
         
         # Affichage paginé des billets
         page_size = 10
-        page_number = st.number_input('Page', min_value=1, max_value=int(np.ceil(len(predictions)/page_size)), value=1)
+        page_number = st.number_input('Page', min_value=1, 
+                                    max_value=int(np.ceil(len(predictions)/page_size)), 
+                                    value=1)
         start_idx = (page_number-1)*page_size
         end_idx = start_idx + page_size
         
@@ -332,51 +330,60 @@ if st.session_state.results:
             </div>
             """, unsafe_allow_html=True)
         
-        # Statistiques
+        # Statistiques améliorées
         st.markdown("---")
         st.markdown("### 📈 Statistiques globales")
         
-        genuine_count = sum(1 for p in predictions if p.get('prediction', '').lower() == 'genuine')
-        fake_count = len(predictions) - genuine_count
-        
-        st.markdown("""
+        st.markdown(f"""
         <div class="stat-container">
             <div class="stat-card">
-                <h3>Total</h3>
-                <p style="font-size: 24px; color: var(--primary);">{len(predictions)}</p>
+                <h3>Total analysés</h3>
+                <p style="font-size: 24px; color: var(--primary);">{stats.get('total', 0)}</p>
             </div>
             <div class="stat-card">
-                <h3>Authentiques</h3>
-                <p style="font-size: 24px; color: var(--success);">{genuine_count} ({genuine_count/len(predictions)*100:.1f}%)</p>
+                <h3>Billets authentiques</h3>
+                <p style="font-size: 24px; color: var(--success);">{stats.get('genuine', 0)}<br>
+                <span style="font-size: 16px;">({stats.get('genuine_percentage', 0)}%)</span></p>
             </div>
             <div class="stat-card">
-                <h3>Faux</h3>
-                <p style="font-size: 24px; color: var(--danger);">{fake_count} ({fake_count/len(predictions)*100:.1f}%)</p>
+                <h3>Billets faux</h3>
+                <p style="font-size: 24px; color: var(--danger);">{stats.get('fake', 0)}<br>
+                <span style="font-size: 16px;">({stats.get('fake_percentage', 0)}%)</span></p>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Graphiques
+        # Graphiques améliorés
         st.markdown("### 📊 Visualisations")
-        
-        tab1, tab2 = st.tabs(["Répartition", "Confiance moyenne"])
+        tab1, tab2 = st.tabs(["📊 Répartition", "📈 Confiance moyenne"])
         
         with tab1:
             fig_pie = px.pie(
                 names=['Authentiques', 'Faux'],
-                values=[genuine_count, fake_count],
-                color_discrete_sequence=["#d4a017", "#a37d12"],  # Nuances de la couleur du header
+                values=[stats.get('genuine', 0), stats.get('fake', 0)],
+                color_discrete_sequence=["#d4a017", "#a37d12"],
                 hole=0.3,
                 template="plotly_white"
             )
-            
-            
+            fig_pie.update_traces(
+                textinfo='percent+label',
+                marker=dict(line=dict(color='#fff9e6', width=1)),
+                textfont_size=14,
+                pull=[0.02, 0]
+            )
             fig_pie.update_layout(
-                plot_bgcolor='#fff9e6',  # Couleur de fond du graphique
-                paper_bgcolor='#fff9e6',  # Couleur de la zone autour
-                margin=dict(t=0, b=0, l=0, r=0),
-                height=300
-            ) 
+                plot_bgcolor='#fff9e6',
+                paper_bgcolor='#fff9e6',
+                margin=dict(t=20, b=20, l=20, r=20),
+                height=350,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="center",
+                    x=0.5
+                )
+            )
             st.plotly_chart(fig_pie, use_container_width=True)
         
         with tab2:
@@ -390,17 +397,25 @@ if st.session_state.results:
                 x=['Authentiques', 'Faux'],
                 y=[avg_genuine, avg_fake],
                 color=['Authentiques', 'Faux'],
-                color_discrete_map={'Authentiques': '#d4a017', 'Faux': '#a37d12'}, 
+                color_discrete_map={'Authentiques': '#d4a017', 'Faux': '#a37d12'},
                 text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
                 labels={'x': '', 'y': 'Confiance moyenne (%)'},
                 template="plotly_white"
             )
+            fig_bar.update_traces(
+                marker_line_color='#fff9e6',
+                marker_line_width=1.5,
+                textfont_size=14,
+                textposition='outside'
+            )
             fig_bar.update_layout(
                 plot_bgcolor='#fff9e6',
                 paper_bgcolor='#fff9e6',
-                margin=dict(t=0, b=0, l=0, r=0),
-                height=300,
-                yaxis_range=[0, 100]
-            
-)
+                margin=dict(t=20, b=20, l=20, r=20),
+                height=350,
+                yaxis_range=[0, 105],
+                xaxis_title=None,
+                yaxis_title="Confiance moyenne (%)",
+                showlegend=False
+            )
             st.plotly_chart(fig_bar, use_container_width=True)
