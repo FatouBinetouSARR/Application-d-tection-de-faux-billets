@@ -221,12 +221,11 @@ if uploaded_file is not None:
                 try:
                     if model is None or scaler is None:
                         st.error("Modèle non chargé")
-                        return
-                    
-                    st.session_state.results = predict_data(st.session_state.df.copy())
-                    st.session_state.last_update = time()
-                    st.toast("✅ Analyse terminée avec succès !")
-                    st.rerun()
+                    else: 
+                        st.session_state.results = predict_data(st.session_state.df.copy())
+                        st.session_state.last_update = time()
+                        st.toast("✅ Analyse terminée avec succès !")
+                        st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
