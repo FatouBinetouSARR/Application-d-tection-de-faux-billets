@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-import requests
 import plotly.express as px
 import base64
 import io
 import os
 import numpy as np
 from time import time
+import joblib  # Pour charger le modèle directement
 
 # Configuration de la page
 st.set_page_config(
@@ -22,8 +22,19 @@ if 'results' not in st.session_state:
     st.session_state.results = None
 if 'df' not in st.session_state:
     st.session_state.df = None
-if 'last_update' not in st.session_state:
-    st.session_state.last_update = 0
+
+# Chargement du modèle et du scaler
+@st.cache_resource
+def load_model():
+    try:
+        model = joblib.load('random_forest_model.sav')
+        scaler = joblib.load('scaler.sav')
+        return model, scaler
+    except Exception as e:
+        st.error(f"Erreur de chargement du modèle : {str(e)}")
+        return None, None
+
+model, scaler = load_model()
 
 # Chemins des images locales
 GENUINE_IMG_PATH = os.path.join("images", "vrai.png")
@@ -44,7 +55,7 @@ def load_images():
 
 genuine_img, fake_img = load_images()
 
-# CSS optimisé
+# CSS optimisé (identique à votre version originale)
 st.markdown("""
 <style>
 :root {
@@ -112,7 +123,6 @@ st.markdown("---")
 st.markdown("### À propos")
 st.markdown("""
 Bienvenue dans notre application de détection automatique de faux billets en euros.
-
 Cette application permet d'analyser les caractéristiques géométriques des billets pour déterminer leur authenticité avec une précision de 98%.
 
 **Fonctionnalités :**
@@ -128,6 +138,73 @@ uploaded_file = st.file_uploader(
     help="Le fichier doit contenir les colonnes: length, height_left, height_right, margin_up, margin_low, diagonal"
 )
 
+def predict_data(df):
+    """Fonction pour faire les prédictions directement dans Streamlit"""
+    try:
+        # Nettoyage des colonnes
+        df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+        
+        # Mapping des colonnes
+        column_mapping = {
+            'diagonal': ['diagonal', 'dingmail', 'diagonale'],
+            'height_left': ['height_left', 'hauteur_gauche'],
+            'height_right': ['height_right', 'hauteur_droite'],
+            'margin_low': ['margin_low', 'margin_bow', 'marge_basse'],
+            'margin_up': ['margin_up', 'marge_haute'],
+            'length': ['length', 'longueur']
+        }
+        
+        for standard_name, variants in column_mapping.items():
+            for variant in variants:
+                if variant in df.columns:
+                    df.rename(columns={variant: standard_name}, inplace=True)
+                    break
+        
+        # Vérification des colonnes
+        required_columns = ['diagonal', 'height_left', 'height_right', 'margin_low', 'margin_up', 'length']
+        missing_cols = [col for col in required_columns if col not in df.columns]
+        if missing_cols:
+            st.error(f"Colonnes manquantes: {missing_cols}")
+            return None
+        
+        # Prétraitement
+        df = df[required_columns].apply(pd.to_numeric, errors='coerce')
+        df = df.fillna(df.median())
+        X_scaled = scaler.transform(df)
+        
+        # Prédictions
+        predictions = model.predict(X_scaled)
+        probabilities = model.predict_proba(X_scaled)
+        
+        # Formatage des résultats
+        results = []
+        for i, (pred, prob) in enumerate(zip(predictions, probabilities)):
+            results.append({
+                "id": i + 1,
+                "prediction": "Genuine" if pred else "Fake",
+                "probability": float(prob[1] if pred else prob[0]),
+                "features": df.iloc[i].to_dict()
+            })
+        
+        # Statistiques
+        genuine_count = int(sum(predictions))
+        fake_count = int(len(predictions) - genuine_count)
+        
+        return {
+            "predictions": results,
+            "stats": {
+                "total": len(predictions),
+                "genuine": genuine_count,
+                "fake": fake_count,
+                "genuine_percentage": round(genuine_count / len(predictions) * 100, 2),
+                "fake_percentage": round(fake_count / len(predictions) * 100, 2)
+            }
+        }
+        
+    except Exception as e:
+        st.error(f"Erreur lors de la prédiction: {str(e)}")
+        return None
+
 if uploaded_file is not None:
     try:
         @st.cache_data(ttl=3600, show_spinner="Chargement des données...")
@@ -142,24 +219,15 @@ if uploaded_file is not None:
         if st.button("🔎 Lancer l'analyse", key="analyze_btn", type="primary"):
             with st.spinner("Analyse en cours... Veuillez patienter"):
                 try:
-                    file_bytes = io.BytesIO(uploaded_file.getvalue())
-                    files = {"file": (uploaded_file.name, file_bytes, "text/csv")}
+                    if model is None or scaler is None:
+                        st.error("Modèle non chargé")
+                        return
                     
-                    response = requests.post(
-                        "http://localhost:8000/predict", 
-                        files=files, 
-                        timeout=10
-                    )
-                    response.raise_for_status()
-                    
-                    st.session_state.results = response.json()
+                    st.session_state.results = predict_data(st.session_state.df.copy())
                     st.session_state.last_update = time()
                     st.toast("✅ Analyse terminée avec succès !")
                     st.rerun()
 
-                except requests.exceptions.RequestException as e:
-                    st.error(f"❌ Erreur de connexion à l'API: {str(e)}")
-                    st.session_state.results = None
                 except Exception as e:
                     st.error(f"❌ Erreur lors de l'analyse: {str(e)}")
                     st.session_state.results = None
@@ -167,7 +235,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"❌ Erreur de lecture du fichier: {str(e)}")
 
-# Affichage des résultats
+# Affichage des résultats (identique à votre version originale)
 if st.session_state.results:
     predictions = st.session_state.results.get('predictions', [])
     
@@ -187,7 +255,7 @@ if st.session_state.results:
             is_genuine = pred.get('prediction', '').lower() == 'genuine'
             prob = pred.get('probability', 0)
             prob = prob if is_genuine else (1 - prob)
-            prob_percent = min(100, max(0, prob * 100))  # Garantit entre 0 et 100
+            prob_percent = min(100, max(0, prob * 100))
             color = "#28a745" if is_genuine else "#dc3545"
             status = "Authentique ✅" if is_genuine else "Faux ❌"
             
