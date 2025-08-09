@@ -54,18 +54,22 @@ def load_images():
         return None, None
 
 genuine_img, fake_img = load_images()
-
-# CSS optimisé (identique à votre version originale)
+ #CSS  
 st.markdown("""
 <style>
 :root {
     --primary: #d4a017;
+    --primary-dark: #b38a14;
     --secondary: #fff9e6;
     --success: #28a745;
     --danger: #dc3545;
     font-family: 'Arial', sans-serif;
 }
+
+/* Application */
 .stApp { background-color: var(--secondary); }
+
+/* Header */
 .header {
     background-color: var(--primary);
     color: white;
@@ -74,6 +78,8 @@ st.markdown("""
     margin-bottom: 20px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
+
+/* Cartes */
 .card {
     background-color: white;
     border-radius: 10px;
@@ -83,6 +89,8 @@ st.markdown("""
 }
 .genuine-card { border-left: 4px solid var(--success); }
 .fake-card { border-left: 4px solid var(--danger); }
+
+/* Statistiques */
 .stat-container {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -96,16 +104,61 @@ st.markdown("""
     background-color: white;
     border: 1px solid var(--primary);
 }
+
+/* Barre de probabilité */
 .probability-bar {
     height: 8px;
     border-radius: 4px;
     background: #e9ecef;
     margin: 0.3rem 0;
 }
+
+/* Image des billets */
 .billet-image {
     border-radius: 6px;
     width: 100px;
     border: 2px solid white;
+}
+
+/* Boutons */
+.stButton>button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+}
+
+.stButton>button:hover {
+    background-color: var(--primary-dark);
+    color: white;
+}
+
+.stFileUploader>div>div>button {
+    background-color: var(--primary);
+    color: white;
+    border-radius: 8px;
+}
+
+.stFileUploader>div>div>button:hover {
+    background-color: var(--primary-dark);
+    color: white;
+}
+
+/* Onglets */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 8px 16px;
+    border-radius: 8px 8px 0 0;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: var(--primary);
+    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -312,14 +365,18 @@ if st.session_state.results:
             fig_pie = px.pie(
                 names=['Authentiques', 'Faux'],
                 values=[genuine_count, fake_count],
-                color_discrete_sequence=["#28a745", "#dc3545"],
+                color_discrete_sequence=["#d4a017", "#a37d12"],  # Nuances de la couleur du header
                 hole=0.3,
                 template="plotly_white"
             )
+            
+            
             fig_pie.update_layout(
+                plot_bgcolor='#fff9e6',  # Couleur de fond du graphique
+                paper_bgcolor='#fff9e6',  # Couleur de la zone autour
                 margin=dict(t=0, b=0, l=0, r=0),
                 height=300
-            )
+            ) 
             st.plotly_chart(fig_pie, use_container_width=True)
         
         with tab2:
@@ -333,14 +390,17 @@ if st.session_state.results:
                 x=['Authentiques', 'Faux'],
                 y=[avg_genuine, avg_fake],
                 color=['Authentiques', 'Faux'],
-                color_discrete_map={'Authentiques': '#28a745', 'Faux': '#dc3545'},
+                color_discrete_map={'Authentiques': '#d4a017', 'Faux': '#a37d12'}, 
                 text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
                 labels={'x': '', 'y': 'Confiance moyenne (%)'},
                 template="plotly_white"
             )
             fig_bar.update_layout(
+                plot_bgcolor='#fff9e6',
+                paper_bgcolor='#fff9e6',
                 margin=dict(t=0, b=0, l=0, r=0),
                 height=300,
                 yaxis_range=[0, 100]
-            )
+            
+)
             st.plotly_chart(fig_bar, use_container_width=True)
