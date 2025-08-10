@@ -43,10 +43,9 @@ FAKE_IMG_PATH = os.path.join("images", "faux.png")
 @st.cache_resource
 def load_images():
     try:
-        with open(GENUINE_IMG_PATH, "rb") as img_file:
-            genuine_img = base64.b64encode(img_file.read()).decode('utf-8')
-        with open(FAKE_IMG_PATH, "rb") as img_file:
-            fake_img = base64.b64encode(img_file.read()).decode('utf-8')
+        # Charger les images une fois et les stocker en mémoire
+        genuine_img = open(GENUINE_IMG_PATH, "rb").read()
+        fake_img = open(FAKE_IMG_PATH, "rb").read()
         return genuine_img, fake_img
     except Exception as e:
         st.error(f"Erreur de chargement des images: {str(e)}")
@@ -55,7 +54,6 @@ def load_images():
 genuine_img, fake_img = load_images()
 
 # CSS optimisé
-
 st.markdown("""
 <style>
 :root {
@@ -67,7 +65,7 @@ st.markdown("""
     font-family: 'Arial', sans-serif;
 }
 
-/* Style pour tous les boutons */
+/* Styles existants conservés */
 button {
     background-color: var(--primary) !important;
     color: white !important;
@@ -84,12 +82,10 @@ button:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
 }
 
-/* Style spécifique pour le bouton d'analyse */
 .stButton>button {
     width: 100%;
 }
 
-/* Style pour les autres éléments (conservés) */
 .stApp { background-color: var(--secondary); }
 
 .header {
@@ -111,39 +107,49 @@ button:hover {
 .genuine-card { border-left: 4px solid var(--success); }
 .fake-card { border-left: 4px solid var(--danger); }
 
-.stat-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1rem 0;
+/* Nouveaux styles optimisés */
+.billet-card {
+    display: flex;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-height: 180px;
+}
+
+.billet-info {
+    flex: 1;
+    padding-right: 15px;
+}
+
+.billet-image-container {
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .billet-image {
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 6px;
-    width: 100%;
-    height: auto;
-    max-width: 100px;
-    border: 2px solid white;
+    border: 2px solid #eee;
 }
 
-.feature-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
+.probability-bar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    margin: 10px 0;
+    overflow: hidden;
 }
-.feature-table th {
-    background-color: var(--primary);
-    color: white;
-    padding: 12px;
-    text-align: left;
-}
-.feature-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-.feature-table tr:nth-child(even) {
-    background-color: #f9f9f9;
+
+.probability-fill {
+    height: 100%;
+    border-radius: 3px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -177,7 +183,7 @@ Diagonale (diagonal).
 
 # Section Analyse
 uploaded_file = st.file_uploader(
-    "📂 Importez votre fichier CSVi", 
+    "📂 Importez votre fichier CSV", 
     type=["csv"],
     help="Le fichier doit contenir les colonnes: length, height_left, height_right, margin_up, margin_low, diagonal"
 )
@@ -389,13 +395,6 @@ if st.session_state.results:
                 textposition='outside'
             )
             fig_bar.update_layout(
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(color='black', size=14),
-                margin=dict(t=40, b=40, l=40, r=40),
-                height=400
-            )
-            fig_bar.update_layout(
                 plot_bgcolor='#fff9e6',
                 paper_bgcolor='#fff9e6',
                 margin=dict(t=20, b=20, l=20, r=20),
@@ -407,27 +406,28 @@ if st.session_state.results:
             )
             st.plotly_chart(fig_bar, use_container_width=True)
         
-       
-                
-        # Affichage des images des billets
-        
+        # Affichage optimisé des images des billets
         st.markdown("---")
         st.markdown("### 🖼️ Visualisation des billets")
         
-        # Paramètres ajustés pour des images plus grandes
-        total_billets = len(predictions)
-        items_per_row = 4  # Toujours 4 images par ligne
-        image_width = 180  # Largeur augmentée (au lieu de 120)
-        card_min_height = 180  # Hauteur minimale augmentée
+        # Limiter le nombre de billets affichés
+        max_display = 50
+        predictions_to_display = predictions[:max_display] if len(predictions) > max_display else predictions
         
-        num_rows = -(-total_billets // items_per_row)  # Arrondi supérieur
+        # Utiliser des colonnes Streamlit natives pour l'affichage
+        items_per_row = 4
+        num_rows = -(-len(predictions_to_display) // items_per_row)  # Arrondi supérieur
         
         for row in range(num_rows):
             cols = st.columns(items_per_row)
             start_idx = row * items_per_row
-            end_idx = start_idx + items_per_row
             
-            for idx, pred in enumerate(predictions[start_idx:end_idx]):
+            for col_idx, col in enumerate(cols):
+                idx = start_idx + col_idx
+                if idx >= len(predictions_to_display):
+                    break
+                
+                pred = predictions_to_display[idx]
                 is_genuine = pred.get('prediction', '').lower() == 'genuine'
                 prob = pred.get('probability', 0)
                 prob = prob if is_genuine else (1 - prob)
@@ -435,31 +435,31 @@ if st.session_state.results:
                 color = "#28a745" if is_genuine else "#dc3545"
                 status = "Authentique ✅" if is_genuine else "Faux ❌"
                 
-                with cols[idx]:
-                    st.markdown(f"""
-                    <div class="card {'genuine-card' if is_genuine else 'fake-card'}" 
-                         style="padding:20px; margin-bottom:25px; display:flex; align-items:center; justify-content:space-between; min-height:{card_min_height}px; border-radius:12px;">
-                        <div style="flex:1; padding-right:20px;">
-                            <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
-                            <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
-                            <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
-                            <div class="probability-bar" style="width:100%; margin:10px 0;">
-                                <div style="height:6px; width:{prob_percent}%; background:{color}; border-radius:4px;"></div>
+                with col:
+                    # Utilisation de composants Streamlit natifs pour l'affichage
+                    with st.container():
+                        st.markdown(f"""
+                        <div class="billet-card {'genuine-card' if is_genuine else 'fake-card'}">
+                            <div class="billet-info">
+                                <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
+                                <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
+                                <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
+                                <div class="probability-bar">
+                                    <div class="probability-fill" style="width:{prob_percent}%; background:{color};"></div>
+                                </div>
+                            </div>
+                            <div class="billet-image-container">
+                                <img class="billet-image" src="data:image/png;base64,{base64.b64encode(genuine_img if is_genuine else fake_img).decode('utf-8')}">
                             </div>
                         </div>
-                        <div style="flex-shrink:0; margin-left:20px;">
-                            <img src="data:image/png;base64,{genuine_img if is_genuine else fake_img}" 
-                                 style="border-radius:8px; width:{image_width}px; height:auto; border:3px solid #eee; box-shadow:0 4px 8px rgba(0,0,0,0.15);"/>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+        
         st.markdown("---")
         st.markdown("### 🧮 Aperçu des caractéristiques de quelques billets")
-        # Affichage des caractéristiques sous forme de tableau
         
-        # Création d'un DataFrame avec les caractéristiques 
+        # Affichage des caractéristiques sous forme de tableau
         features_list = []
-        for pred in predictions[:10]:  # Prendre  les 10 premiers si le fichier en contient
+        for pred in predictions[:10]:
             features = pred['features'].copy()
             features['id'] = pred['id']
             features['prediction'] = pred['prediction']
@@ -467,13 +467,9 @@ if st.session_state.results:
             features_list.append(features)
         
         df_features = pd.DataFrame(features_list)
-        
-        # Réorganiser les colonnes pour avoir l'ID en premier
         cols = ['id', 'prediction', 'probability'] + [c for c in df_features.columns if c not in ['id', 'prediction', 'probability']]
-      
         df_features = df_features[cols]
         
-        # Afficher le tableau simple
         st.dataframe(
             df_features.style
             .format("{:.2f}", subset=df_features.select_dtypes(include=['float64']).columns)
@@ -482,5 +478,3 @@ if st.session_state.results:
             height=250,
             use_container_width=True
         )
-        
-        
