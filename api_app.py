@@ -147,7 +147,7 @@ async def predict(file: UploadFile = File(...)):
             detail="Erreur interne du serveur"
         )
 
-# Servir les images statiques
+
 from fastapi.staticfiles import StaticFiles
 app.mount("/images", StaticFiles(directory="images"), name="images")
 

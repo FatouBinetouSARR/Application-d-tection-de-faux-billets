@@ -412,7 +412,7 @@ if st.session_state.results:
         
         
         # Affichons 4 images par ligne
-        items_per_row = 5
+        items_per_row = 4
         num_rows = -(-len(predictions_to_display) // items_per_row) 
         
         for row in range(num_rows):
