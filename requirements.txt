@@ -1,6 +1,8 @@
 streamlit>=1.0.0
 pandas>=1.0.0
-requests>=2.25.0
 plotly>=5.0.0
 numpy>=1.20.0
-python-multipart>=0.0.5  # Nécessaire pour les uploads de fichiers
+joblib>=1.0.0
+scikit-learn>=1.0.0  # Nécessaire pour les modèles de machine learning
+python-multipart>=0.0.5
+base64io>=1.0.0  # Pour la gestion des images en base64
