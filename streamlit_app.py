@@ -372,7 +372,7 @@ if st.session_state.results:
         
         with tab2:
             genuine_probs = [p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'genuine']
-            fake_probs = [1-p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'fake']
+            fake_probs = [p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'fake']
             
             avg_genuine = np.mean(genuine_probs)*100 if genuine_probs else 0
             avg_fake = np.mean(fake_probs)*100 if fake_probs else 0
