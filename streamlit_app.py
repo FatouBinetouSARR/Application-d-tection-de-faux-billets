@@ -60,9 +60,9 @@ st.markdown("""
     --primary: #d4a017;
     --primary-dark: #b38a14;
     --secondary: #fff9e6;
-    --success: #28a745;
-    --danger: #dc3545;
-    font-family: 'Arial', sans-serif;
+    --success: #a37d12;  
+    --danger: #5a3921;   
+    
 }
 
 /* Styles existants conservés */
@@ -312,7 +312,8 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #28a745;
+                border-left: 5px solid #a37d12;  
+                color: #a37d12;
             ">
                 <h3 style="color: #28a745; margin-bottom: 0.5rem;">Authentiques</h3>
                 <p style="font-size: 2rem; font-weight: bold; color: #28a745; margin: 0;">
@@ -330,7 +331,8 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #dc3545;
+                border-left: 5px solid #5a3921;  
+                color: #5a3921;
             ">
                 <h3 style="color: #dc3545; margin-bottom: 0.5rem;">Faux billets</h3>
                 <p style="font-size: 2rem; font-weight: bold; color: #dc3545; margin: 0;">
@@ -345,12 +347,11 @@ if st.session_state.results:
         
         with tab1:
             fig_pie = px.pie(
-                names=['Authentiques', 'Faux'],
-                values=[stats.get('genuine', 0), stats.get('fake', 0)],
-                color_discrete_sequence=["#d4a017", "#a37d12"],
-                hole=0.3,
-                template="plotly_white"
-            )
+            names=['Authentiques', 'Faux'],
+            values=[stats.get('genuine', 0), stats.get('fake', 0)],
+            color_discrete_sequence=["#a37d12", "#5a3921"],  
+            
+)
             fig_pie.update_traces(
                 textinfo='percent+label',
                 marker=dict(line=dict(color='#fff9e6', width=1)),
@@ -383,7 +384,7 @@ if st.session_state.results:
                 x=['Authentiques', 'Faux'],
                 y=[avg_genuine, avg_fake],
                 color=['Authentiques', 'Faux'],
-                color_discrete_map={'Authentiques': '#d4a017', 'Faux': '#a37d12'},
+                color_discrete_map={'Authentiques': '#a37d12', 'Faux': '#5a3921'},
                 text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
                 labels={'x': '', 'y': 'Confiance moyenne (%)'},
                 template="plotly_white"
