@@ -111,12 +111,11 @@ button:hover {
 /* Nouveaux styles optimisés */
 .billet-card {
     display: flex;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 10px;
+    padding: 20px; 
+    margin-bottom: 20px;
     background: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    min-height: 180px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    min-height: 220px; 
 }
 
 .billet-info {
@@ -126,8 +125,8 @@ button:hover {
 
 .billet-image-container {
     flex-shrink: 0;
-    width: 120px;
-    height: 120px;
+    width: 160px; 
+    height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -136,8 +135,8 @@ button:hover {
 .billet-image {
     max-width: 100%;
     max-height: 100%;
-    border-radius: 6px;
-    border: 2px solid #eee;
+    border-radius: 8px;
+    border: 3px solid #eee; /* bordure plus visible */
 }
 
 .probability-bar {
