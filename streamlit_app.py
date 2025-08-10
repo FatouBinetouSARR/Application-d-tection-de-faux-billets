@@ -259,8 +259,8 @@ if uploaded_file is not None:
         with st.expander("📄 Aperçu des données (cliquez pour développer)", expanded=False):
             st.dataframe(st.session_state.df.head(), height=210, use_container_width=True)
         
-        if st.button("🔎 Lancer l'analyse", key="analyze_btn", type="primary"):
-            with st.spinner("Analyse en cours... Veuillez patienter"):
+        if st.button("🔎 Analyser", key="analyze_btn", type="primary"):
+            with st.spinner("Analyse en cours... "):
                 try:
                     if model is None or scaler is None:
                         st.error("Modèle non chargé")
@@ -412,7 +412,7 @@ if st.session_state.results:
         
         
         # Affichons 4 images par ligne
-        items_per_row = 4
+        items_per_row = 5
         num_rows = -(-len(predictions_to_display) // items_per_row) 
         
         for row in range(num_rows):
