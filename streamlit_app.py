@@ -160,18 +160,24 @@ st.markdown("""
 st.markdown("---")
 st.markdown("### À propos")
 st.markdown("""
-Bienvenue dans notre application de détection automatique de faux billets en euros.
-Cette application permet d'analyser les caractéristiques géométriques des billets pour déterminer leur authenticité avec un taux élevé de précision.
+Contexte
+Ce projet vise à développer un algorithme de détection automatique de faux billets en euros en utilisant des techniques de machine learning. Il s'inscrit dans une démarche de lutte contre la contrefaçon en exploitant des caractéristiques géométriques mesurables des billets, imperceptibles à l'œil nu mais détectables par une machine.
 
-**Fonctionnalités :**
-- Analyse de 6 paramètres géométriques
-- Interface intuitive
-- Résultats détaillés avec niveaux de confiance
+Objectifs
+L'objectif principal est de construire un modèle capable de prédire avec précision si un billet est authentique ou contrefait, en se basant sur six dimensions géométriques :
+
+Longueur (length)
+
+Hauteur à gauche (height_left) et à droite (height_right)
+
+Marges supérieure (margin_up) et inférieure (margin_low)
+
+Diagonale (diagonal).
 """)
 
 # Section Analyse
 uploaded_file = st.file_uploader(
-    "📤 Faites glisser et déposez votre fichier CSV ici", 
+    "📂 Importez votre fichier CSVi", 
     type=["csv"],
     help="Le fichier doit contenir les colonnes: length, height_left, height_right, margin_up, margin_low, diagonal"
 )
@@ -244,7 +250,7 @@ if uploaded_file is not None:
         
         st.session_state.df = load_data(uploaded_file)
         
-        with st.expander("🔍 Aperçu des données (cliquez pour développer)", expanded=False):
+        with st.expander("📄 Aperçu des données (cliquez pour développer)", expanded=False):
             st.dataframe(st.session_state.df.head(), height=210, use_container_width=True)
         
         if st.button("🔎 Lancer l'analyse", key="analyze_btn", type="primary"):
@@ -272,29 +278,60 @@ if st.session_state.results:
         st.warning("⚠️ Aucun résultat à afficher")
     else:
         st.markdown("## 📊 Résultats de la détection")
-        st.markdown("---")
+    
+        # Création de 3 colonnes
+        col1, col2, col3 = st.columns(3)
         
-        # Statistiques globales
-        st.markdown("### 📈 Statistiques globales")
+        # Carte 1 - Total analysés
+        with col1:
+            st.markdown(f"""
+            <div style="
+                background: white;
+                border-radius: 10px;
+                padding: 1.5rem;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            ">
+                <h3 style="color: #4a6fa5; margin-bottom: 0.5rem;">Total analysés</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: #4a6fa5; margin: 0;">{stats.get('total', 0)}</p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        st.markdown(f"""
-        <div class="stat-container">
-            <div class="stat-card">
-                <h3>Total analysés</h3>
-                <p style="font-size: 24px; color: var(--primary);">{stats.get('total', 0)}</p>
+        # Carte 2 - Authentiques
+        with col2:
+            st.markdown(f"""
+            <div style="
+                background: white;
+                border-radius: 10px;
+                padding: 1.5rem;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                border-left: 5px solid #28a745;
+            ">
+                <h3 style="color: #28a745; margin-bottom: 0.5rem;">Authentiques</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: #28a745; margin: 0;">
+                    {stats.get('genuine', 0)} <span style="font-size: 1rem;">({stats.get('genuine_percentage', 0)}%)</span>
+                </p>
             </div>
-            <div class="stat-card">
-                <h3>Billets authentiques</h3>
-                <p style="font-size: 24px; color: var(--success);">{stats.get('genuine', 0)}<br>
-                <span style="font-size: 16px;">({stats.get('genuine_percentage', 0)}%)</span></p>
+            """, unsafe_allow_html=True)
+        
+        # Carte 3 - Faux billets
+        with col3:
+            st.markdown(f"""
+            <div style="
+                background: white;
+                border-radius: 10px;
+                padding: 1.5rem;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                border-left: 5px solid #dc3545;
+            ">
+                <h3 style="color: #dc3545; margin-bottom: 0.5rem;">Faux billets</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: #dc3545; margin: 0;">
+                    {stats.get('fake', 0)} <span style="font-size: 1rem;">({stats.get('fake_percentage', 0)}%)</span>
+                </p>
             </div>
-            <div class="stat-card">
-                <h3>Billets faux</h3>
-                <p style="font-size: 24px; color: var(--danger);">{stats.get('fake', 0)}<br>
-                <span style="font-size: 16px;">({stats.get('fake_percentage', 0)}%)</span></p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         
         # Graphiques
         st.markdown("### 📊 Visualisations")
@@ -352,6 +389,13 @@ if st.session_state.results:
                 textposition='outside'
             )
             fig_bar.update_layout(
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font=dict(color='black', size=14),
+                margin=dict(t=40, b=40, l=40, r=40),
+                height=400
+            )
+            fig_bar.update_layout(
                 plot_bgcolor='#fff9e6',
                 paper_bgcolor='#fff9e6',
                 margin=dict(t=20, b=20, l=20, r=20),
@@ -363,43 +407,20 @@ if st.session_state.results:
             )
             st.plotly_chart(fig_bar, use_container_width=True)
         
-        # Affichage des caractéristiques sous forme de tableau
-        st.markdown("---")
-        st.markdown("### Aperçu des caractéristiques de quelques billets")
-        
-        # Création d'un DataFrame avec les caractéristiques (6 premiers billets)
-        features_list = []
-        for pred in predictions[:6]:  # Prendre seulement les 6 premiers
-            features = pred['features'].copy()
-            features['id'] = pred['id']
-            features['prediction'] = pred['prediction']
-            features['probability'] = pred['probability']
-            features_list.append(features)
-        
-        df_features = pd.DataFrame(features_list)
-        
-        # Réorganiser les colonnes pour avoir l'ID en premier
-        cols = ['id', 'prediction', 'probability'] + [c for c in df_features.columns if c not in ['id', 'prediction', 'probability']]
-        df_features = df_features[cols]
-        
-        # Afficher le tableau simple
-        st.dataframe(
-            df_features.style
-            .format("{:.2f}", subset=df_features.select_dtypes(include=['float64']).columns)
-            .applymap(lambda x: 'color: #28a745' if x == 'Genuine' else 'color: #dc3545', 
-                     subset=['prediction']),
-            height=250,
-            use_container_width=True
-        )
-        
-        # Affichage des images des billets (8 premiers)
+       
+                
+        # Affichage des images des billets
         
         st.markdown("---")
         st.markdown("### 🖼️ Visualisation des billets")
         
-        # Afficher seulement les 8 premiers billets
-        items_per_row = 4
-        num_rows = -(-8 // items_per_row)  # Arrondi supérieur pour 8 billets
+        # Paramètres ajustés pour des images plus grandes
+        total_billets = len(predictions)
+        items_per_row = 4  # Toujours 4 images par ligne
+        image_width = 180  # Largeur augmentée (au lieu de 120)
+        card_min_height = 180  # Hauteur minimale augmentée
+        
+        num_rows = -(-total_billets // items_per_row)  # Arrondi supérieur
         
         for row in range(num_rows):
             cols = st.columns(items_per_row)
@@ -417,18 +438,49 @@ if st.session_state.results:
                 with cols[idx]:
                     st.markdown(f"""
                     <div class="card {'genuine-card' if is_genuine else 'fake-card'}" 
-                         style="padding:15px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; min-height:140px; border-radius:10px;">
-                        <div style="flex:1; padding-right:15px;">
-                            <h3 style="margin:0 0 8px 0; color:{color}; font-size:1.1rem;">Billet n°{pred.get('id', 'N/A')}</h3>
-                            <p style="margin:0 0 5px 0; font-size:1rem;">Statut: <strong>{status}</strong></p>
-                            <p style="margin:0 0 8px 0; font-size:1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
-                            <div class="probability-bar" style="width:100%; margin:8px 0;">
-                                <div style="height:5px; width:{prob_percent}%; background:{color}; border-radius:3px;"></div>
+                         style="padding:20px; margin-bottom:25px; display:flex; align-items:center; justify-content:space-between; min-height:{card_min_height}px; border-radius:12px;">
+                        <div style="flex:1; padding-right:20px;">
+                            <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
+                            <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
+                            <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
+                            <div class="probability-bar" style="width:100%; margin:10px 0;">
+                                <div style="height:6px; width:{prob_percent}%; background:{color}; border-radius:4px;"></div>
                             </div>
                         </div>
-                        <div style="flex-shrink:0; margin-left:15px;">
+                        <div style="flex-shrink:0; margin-left:20px;">
                             <img src="data:image/png;base64,{genuine_img if is_genuine else fake_img}" 
-                                 style="border-radius:6px; width:120px; height:auto; border:2px solid #eee; box-shadow:0 3px 6px rgba(0,0,0,0.1);"/>
+                                 style="border-radius:8px; width:{image_width}px; height:auto; border:3px solid #eee; box-shadow:0 4px 8px rgba(0,0,0,0.15);"/>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("### 🧮 Aperçu des caractéristiques de quelques billets")
+        # Affichage des caractéristiques sous forme de tableau
+        
+        # Création d'un DataFrame avec les caractéristiques 
+        features_list = []
+        for pred in predictions[:10]:  # Prendre  les 10 premiers si le fichier en contient
+            features = pred['features'].copy()
+            features['id'] = pred['id']
+            features['prediction'] = pred['prediction']
+            features['probability'] = pred['probability']
+            features_list.append(features)
+        
+        df_features = pd.DataFrame(features_list)
+        
+        # Réorganiser les colonnes pour avoir l'ID en premier
+        cols = ['id', 'prediction', 'probability'] + [c for c in df_features.columns if c not in ['id', 'prediction', 'probability']]
+      
+        df_features = df_features[cols]
+        
+        # Afficher le tableau simple
+        st.dataframe(
+            df_features.style
+            .format("{:.2f}", subset=df_features.select_dtypes(include=['float64']).columns)
+            .applymap(lambda x: 'color: #28a745' if x == 'Genuine' else 'color: #dc3545', 
+                     subset=['prediction']),
+            height=250,
+            use_container_width=True
+        )
+        
+        
