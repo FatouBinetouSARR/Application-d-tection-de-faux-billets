@@ -426,7 +426,6 @@ if st.session_state.results:
                 pred = predictions_to_display[idx]
                 is_genuine = pred.get('prediction', '').lower() == 'genuine'
                 prob = pred.get('probability', 0)
-                prob = prob if is_genuine else (1 - prob)
                 prob_percent = min(100, max(0, prob * 100))
                 color = "#a37d12" if is_genuine else "#5a3921" 
                 status = "Authentique ✅" if is_genuine else "Faux ❌"
