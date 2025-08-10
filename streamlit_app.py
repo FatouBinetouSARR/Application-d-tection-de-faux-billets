@@ -55,6 +55,7 @@ genuine_img, fake_img = load_images()
 
 # CSS optimisé
 st.markdown("""
+            
 <style>
 :root {
     --primary: #d4a017;
@@ -151,7 +152,6 @@ button:hover {
     height: 100%;
     border-radius: 3px;
 }
-</style>
 """, unsafe_allow_html=True)
 
 # Titre de l'application
@@ -162,7 +162,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Interface principale
+# Section à propos
 st.markdown("---")
 st.markdown("### À propos")
 st.markdown("""
@@ -231,7 +231,7 @@ def predict_data(df):
                 "features": df.iloc[i].to_dict()
             })
         
-        # Statistiques
+        # Section statistiques: 
         genuine_count = int(sum(predictions))
         return {
             "predictions": results,
@@ -288,7 +288,7 @@ if st.session_state.results:
         # Création de 3 colonnes
         col1, col2, col3 = st.columns(3)
         
-        # Carte 1 - Total analysés
+        # Carte 1 - Le nombre total de billet
         with col1:
             st.markdown(f"""
             <div style="
@@ -303,7 +303,7 @@ if st.session_state.results:
             </div>
             """, unsafe_allow_html=True)
         
-        # Carte 2 - Authentiques
+        # Carte 2 - Les vrais billets
         with col2:
             st.markdown(f"""
             <div style="
@@ -312,17 +312,16 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #a37d12;  
-                color: #a37d12;
+                border-left: 5px solid #a37d12;
             ">
-                <h3 style="color: #28a745; margin-bottom: 0.5rem;">Authentiques</h3>
-                <p style="font-size: 2rem; font-weight: bold; color: #28a745; margin: 0;">
+                <h3 style="color: #a37d12; margin-bottom: 0.5rem;">Authentiques</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: #a37d12; margin: 0;">
                     {stats.get('genuine', 0)} <span style="font-size: 1rem;">({stats.get('genuine_percentage', 0)}%)</span>
                 </p>
             </div>
             """, unsafe_allow_html=True)
         
-        # Carte 3 - Faux billets
+        # Carte 3 - Les faux billets
         with col3:
             st.markdown(f"""
             <div style="
@@ -331,17 +330,16 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #5a3921;  
-                color: #5a3921;
+                border-left: 5px solid #5a3921;
             ">
-                <h3 style="color: #dc3545; margin-bottom: 0.5rem;">Faux billets</h3>
-                <p style="font-size: 2rem; font-weight: bold; color: #dc3545; margin: 0;">
+                <h3 style="color: #5a3921; margin-bottom: 0.5rem;">Faux billets</h3>
+                <p style="font-size: 2rem; font-weight: bold; color: #5a3921; margin: 0;">
                     {stats.get('fake', 0)} <span style="font-size: 1rem;">({stats.get('fake_percentage', 0)}%)</span>
                 </p>
             </div>
             """, unsafe_allow_html=True)
         
-        # Graphiques
+        # Section visualisation
         st.markdown("### 📊 Visualisations")
         tab1, tab2 = st.tabs(["📊 Répartition", "📈 Confiance moyenne"])
         
@@ -406,18 +404,16 @@ if st.session_state.results:
                 showlegend=False
             )
             st.plotly_chart(fig_bar, use_container_width=True)
-        
-        # Affichage optimisé des images des billets
+
         st.markdown("---")
         st.markdown("### 🖼️ Visualisation des billets")
+    
+        predictions_to_display = predictions
         
-        # Limiter le nombre de billets affichés
-        max_display = 50
-        predictions_to_display = predictions[:max_display] if len(predictions) > max_display else predictions
         
-        # Utiliser des colonnes Streamlit natives pour l'affichage
+        # Affichons 4 images par ligne
         items_per_row = 4
-        num_rows = -(-len(predictions_to_display) // items_per_row)  # Arrondi supérieur
+        num_rows = -(-len(predictions_to_display) // items_per_row) 
         
         for row in range(num_rows):
             cols = st.columns(items_per_row)
@@ -433,11 +429,10 @@ if st.session_state.results:
                 prob = pred.get('probability', 0)
                 prob = prob if is_genuine else (1 - prob)
                 prob_percent = min(100, max(0, prob * 100))
-                color = "#28a745" if is_genuine else "#dc3545"
+                color = "#a37d12" if is_genuine else "#5a3921" 
                 status = "Authentique ✅" if is_genuine else "Faux ❌"
                 
                 with col:
-                    # Utilisation de composants Streamlit natifs pour l'affichage
                     with st.container():
                         st.markdown(f"""
                         <div class="billet-card {'genuine-card' if is_genuine else 'fake-card'}">
@@ -455,10 +450,10 @@ if st.session_state.results:
                         </div>
                         """, unsafe_allow_html=True)
         
+        # Affichons  les caractéristiques sous forme de tableau
         st.markdown("---")
         st.markdown("### 🧮 Aperçu des caractéristiques de quelques billets")
         
-        # Affichage des caractéristiques sous forme de tableau
         features_list = []
         for pred in predictions[:10]:
             features = pred['features'].copy()
@@ -471,11 +466,17 @@ if st.session_state.results:
         cols = ['id', 'prediction', 'probability'] + [c for c in df_features.columns if c not in ['id', 'prediction', 'probability']]
         df_features = df_features[cols]
         
+        
         st.dataframe(
             df_features.style
             .format("{:.2f}", subset=df_features.select_dtypes(include=['float64']).columns)
-            .applymap(lambda x: 'color: #28a745' if x == 'Genuine' else 'color: #dc3545', 
-                     subset=['prediction']),
+            .applymap(lambda x: 'color: #a37d12' if x == 'Genuine' else 'color: #5a3921',
+                      subset=['prediction'])
+            .set_properties(**{'text-align': 'center'})
+            .set_table_styles([{
+                'selector': 'thead th',
+                'props': [('background-color', '#d4a017'), ('color', 'white')]
+            }]),
             height=250,
             use_container_width=True
         )
