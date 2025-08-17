@@ -61,12 +61,14 @@ st.markdown("""
     --primary: #d4a017;
     --primary-dark: #b38a14;
     --secondary: #fff9e6;
-    --success: #a37d12;  
-    --danger: #5a3921;   
+    --genuine-color: #a37d12;
+    --fake-color: #5a3921;
     
 }
 
-/* Styles existants conservés */
+.genuine-text { color: var(--genuine-color) !important; }
+.fake-text { color: var(--fake-color) !important; }
+
 button {
     background-color: var(--primary) !important;
     color: white !important;
@@ -105,18 +107,25 @@ button:hover {
     margin-bottom: 1rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-.genuine-card { border-left: 4px solid var(--success); }
-.fake-card { border-left: 4px solid var(--danger); }
+.genuine-card { 
+    border-left: 4px solid var(--genuine-color);
+    background-color: rgba(163, 125, 18, 0.05);
+}
 
-/* Nouveaux styles optimisés */
+.fake-card { 
+    border-left: 4px solid var(--fake-color);
+    background-color: rgba(90, 57, 33, 0.05);
+}
+
+
 .billet-card {
         display: flex;
         padding: 20px;
         margin-bottom: 20px;
         background: white;
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        height: 220px; /* Hauteur FIXE au lieu de min-height */
-        overflow: hidden; /* Empêche le débordement */
+        height: 220px; 
+        overflow: hidden;
     }
 
     .billet-info {
@@ -124,23 +133,23 @@ button:hover {
         padding-right: 15px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between; /* Répartit l'espace verticalement */
+        justify-content: space-between; 
     }
 
-    .billet-image-container {
-        flex-shrink: 0;
-        width: 160px;
-        height: 160px; /* Hauteur fixe pour l'image */
-        display: flex;
-        align-items: center;
-        justify-content: center;
+.billet-image-container {
+    flex-shrink: 0;
+    width: 160px;
+    height: 160px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
     }
 
 .billet-image {
     max-width: 100%;
     max-height: 100%;
     border-radius: 8px;
-    border: 3px solid #eee; /* bordure plus visible */
+    border: 3px solid #eee;
 }
 
 .probability-bar {
@@ -151,10 +160,12 @@ button:hover {
     overflow: hidden;
 }
 
-.probability-fill {
-    height: 100%;
-    border-radius: 3px;
+.probability-fill.genuine {
 }
+.probability-fill.fake {
+    background: var(--fake-color) 
+}
+
 """, unsafe_allow_html=True)
 
 # Titre de l'application
@@ -299,8 +310,7 @@ if st.session_state.results:
                 border-radius: 10px;
                 padding: 1.5rem;
                 text-align: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            ">
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                 <h3 style="color: #4a6fa5; margin-bottom: 0.5rem;">Total analysés</h3>
                 <p style="font-size: 2rem; font-weight: bold; color: #4a6fa5; margin: 0;">{stats.get('total', 0)}</p>
             </div>
@@ -315,15 +325,15 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #a37d12;
-            ">
-                <h3 style="color: #a37d12; margin-bottom: 0.5rem;">Authentiques</h3>
-                <p style="font-size: 2rem; font-weight: bold; color: #a37d12; margin: 0;">
-                    {stats.get('genuine', 0)} <span style="font-size: 1rem;">({stats.get('genuine_percentage', 0)}%)</span>
+                border-left: 5px solid var(--genuine-color);">
+                <h3 class="genuine-text" style="margin-bottom: 0.5rem;">Authentiques</h3>
+                <p style="font-size: 2rem; font-weight: bold; margin: 0;">
+                    <span class="genuine-text">{stats.get('genuine', 0)}</span> 
+                    <span style="font-size: 1rem;" class="genuine-text">({stats.get('genuine_percentage', 0)}%)</span>
                 </p>
             </div>
             """, unsafe_allow_html=True)
-        
+
         # Carte 3 - Les faux billets
         with col3:
             st.markdown(f"""
@@ -333,11 +343,12 @@ if st.session_state.results:
                 padding: 1.5rem;
                 text-align: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                border-left: 5px solid #5a3921;
+                border-left: 5px solid var(--fake-color);
             ">
-                <h3 style="color: #5a3921; margin-bottom: 0.5rem;">Faux billets</h3>
-                <p style="font-size: 2rem; font-weight: bold; color: #5a3921; margin: 0;">
-                    {stats.get('fake', 0)} <span style="font-size: 1rem;">({stats.get('fake_percentage', 0)}%)</span>
+                <h3 class="fake-text" style="margin-bottom: 0.5rem;">Faux billets</h3>
+                <p style="font-size: 2rem; font-weight: bold; margin: 0;">
+                    <span class="fake-text">{stats.get('fake', 0)}</span> 
+                    <span style="font-size: 1rem;" class="fake-text">({stats.get('fake_percentage', 0)}%)</span>
                 </p>
             </div>
             """, unsafe_allow_html=True)
@@ -346,18 +357,22 @@ if st.session_state.results:
         st.markdown("### 📊 Visualisations")
         tab1, tab2 = st.tabs(["📊 Répartition", "📈 Confiance moyenne"])
         
-        with tab1:
+        
+        # Diagramme circulaire
+        with tab1:  
             fig_pie = px.pie(
-            names=['Authentiques', 'Faux'],
-            values=[stats.get('genuine', 0), stats.get('fake', 0)],
-            color_discrete_sequence=["#a37d12", "#5a3921"],  
-            
-)
+                names=['Authentiques', 'Faux'],
+                values=[stats.get('genuine', 0), stats.get('fake', 0)],
+                color=['Authentiques', 'Faux'],  
+                color_discrete_map={
+                    'Authentiques': '#a37d12', 
+                    'Faux': '#5a3921'          
+                }
+            )
             fig_pie.update_traces(
+                marker=dict(colors=['#a37d12', '#5a3921']),  
                 textinfo='percent+label',
-                marker=dict(line=dict(color='#fff9e6', width=1)),
-                textfont_size=14,
-                pull=[0.02, 0]
+                textfont_size=14
             )
             fig_pie.update_layout(
                 plot_bgcolor='#fff9e6',
@@ -375,38 +390,37 @@ if st.session_state.results:
             st.plotly_chart(fig_pie, use_container_width=True)
         
         with tab2:
-            genuine_probs = [p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'genuine']
-            fake_probs = [p.get('probability', 0) for p in predictions if p.get('prediction', '').lower() == 'fake']
-            
-            avg_genuine = np.mean(genuine_probs)*100 if genuine_probs else 0
-            avg_fake = np.mean(fake_probs)*100 if fake_probs else 0
-            
-            fig_bar = px.bar(
-                x=['Authentiques', 'Faux'],
-                y=[avg_genuine, avg_fake],
-                color=['Authentiques', 'Faux'],
-                color_discrete_map={'Authentiques': '#a37d12', 'Faux': '#5a3921'},
-                text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
-                labels={'x': '', 'y': 'Confiance moyenne (%)'},
-                template="plotly_white"
-            )
-            fig_bar.update_traces(
-                marker_line_color='#fff9e6',
-                marker_line_width=1.5,
-                textfont_size=14,
-                textposition='outside'
-            )
-            fig_bar.update_layout(
-                plot_bgcolor='#fff9e6',
-                paper_bgcolor='#fff9e6',
-                margin=dict(t=20, b=20, l=20, r=20),
-                height=350,
-                yaxis_range=[0, 105],
-                xaxis_title=None,
-                yaxis_title="Confiance moyenne (%)",
-                showlegend=False
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
+            try:
+                # Calcul des moyennes
+                genuine_probs = [p['probability'] for p in predictions if p['prediction'].lower() == 'genuine']
+                fake_probs = [p['probability'] for p in predictions if p['prediction'].lower() == 'fake']
+                
+                avg_genuine = np.mean(genuine_probs)*100 if genuine_probs else 0
+                avg_fake = np.mean(fake_probs)*100 if fake_probs else 0
+        
+                # Création du diagramme
+                fig = px.bar(
+                    x=['Authentiques', 'Faux'],
+                    y=[avg_genuine, avg_fake],
+                    color=['Authentiques', 'Faux'],
+                    color_discrete_map={'Authentiques': '#a37d12', 'Faux': '#5a3921'},
+                    text=[f"{avg_genuine:.1f}%", f"{avg_fake:.1f}%"],
+                    labels={'y': 'Confiance moyenne (%)', 'x': ''},
+                    height=400
+                )
+                
+                fig.update_layout(
+                    yaxis_range=[0, 100],
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    xaxis_showgrid=False,
+                    yaxis_showgrid=True
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+        
+            except Exception as e:
+                st.error(f"Erreur lors de la création du diagramme : {str(e)}")
+                st.write("Données utilisées:", predictions)
 
         st.markdown("---")
         st.markdown("### 🖼️ Visualisation des billets")
