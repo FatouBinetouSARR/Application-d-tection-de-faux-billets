@@ -110,27 +110,31 @@ button:hover {
 
 /* Nouveaux styles optimisés */
 .billet-card {
-    display: flex;
-    padding: 20px; 
-    margin-bottom: 20px;
-    background: white;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    min-height: 220px; 
-}
+        display: flex;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        height: 220px; /* Hauteur FIXE au lieu de min-height */
+        overflow: hidden; /* Empêche le débordement */
+    }
 
-.billet-info {
-    flex: 1;
-    padding-right: 15px;
-}
+    .billet-info {
+        flex: 1;
+        padding-right: 15px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* Répartit l'espace verticalement */
+    }
 
-.billet-image-container {
-    flex-shrink: 0;
-    width: 160px; 
-    height: 160px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+    .billet-image-container {
+        flex-shrink: 0;
+        width: 160px;
+        height: 160px; /* Hauteur fixe pour l'image */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
 .billet-image {
     max-width: 100%;
@@ -435,11 +439,15 @@ if st.session_state.results:
                         st.markdown(f"""
                         <div class="billet-card {'genuine-card' if is_genuine else 'fake-card'}">
                             <div class="billet-info">
-                                <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
-                                <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
-                                <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
-                                <div class="probability-bar">
-                                    <div class="probability-fill" style="width:{prob_percent}%; background:{color};"></div>
+                                <div> <!-- Nouveau div pour regrouper le texte -->
+                                    <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
+                                    <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
+                                </div>
+                                <div> <!-- Nouveau div pour la partie inférieure -->
+                                    <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
+                                    <div class="probability-bar">
+                                        <div class="probability-fill" style="width:{prob_percent}%; background:{color};"></div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="billet-image-container">

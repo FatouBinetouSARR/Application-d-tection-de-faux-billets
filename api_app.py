@@ -10,6 +10,10 @@ from pydantic import BaseModel
 from typing import List
 import os
 
+
+
+
+
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,6 +56,7 @@ def convert_numpy_types(obj):
 try:
     model = joblib.load('random_forest_model.sav')
     scaler = joblib.load('scaler.sav')
+    print(type(scaler))
     logger.info("Modèle et scaler chargés avec succès")
 except Exception as e:
     logger.error(f"Erreur lors du chargement du modèle/scaler: {str(e)}")
