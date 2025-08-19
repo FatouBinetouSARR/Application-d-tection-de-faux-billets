@@ -160,10 +160,10 @@ button:hover {
     overflow: hidden;
 }
 
-.probability-fill.genuine {
-}
-.probability-fill.fake {
-    background: var(--fake-color) 
+.probability-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
 }
 
 """, unsafe_allow_html=True)
@@ -450,25 +450,25 @@ if st.session_state.results:
                 
                 with col:
                     with st.container():
-                        st.markdown(f"""
-                        <div class="billet-card {'genuine-card' if is_genuine else 'fake-card'}">
-                            <div class="billet-info">
-                                <div> <!-- Nouveau div pour regrouper le texte -->
-                                    <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
-                                    <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
-                                </div>
-                                <div> <!-- Nouveau div pour la partie inférieure -->
-                                    <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
-                                    <div class="probability-bar">
-                                        <div class="probability-fill" style="width:{prob_percent}%; background:{color};"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="billet-image-container">
-                                <img class="billet-image" src="data:image/png;base64,{base64.b64encode(genuine_img if is_genuine else fake_img).decode('utf-8')}">
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                       st.markdown(f"""
+                       <div class="billet-card {'genuine-card' if is_genuine else 'fake-card'}">
+                           <div class="billet-info">
+                               <div> <!-- Nouveau div pour regrouper le texte -->
+                                   <h3 style="margin:0 0 10px 0; color:{color}; font-size:1.2rem;">Billet n°{pred.get('id', 'N/A')}</h3>
+                                   <p style="margin:0 0 8px 0; font-size:1.1rem;">Statut: <strong>{status}</strong></p>
+                               </div>
+                               <div> <!-- Nouveau div pour la partie inférieure -->
+                                   <p style="margin:0 0 10px 0; font-size:1.1rem;">Confiance: <strong>{prob_percent:.1f}%</strong></p>
+                                   <div class="probability-bar">
+                                   <div class="probability-fill" style="width:{prob_percent}%; background:{color};"></div>
+                                   </div>
+                               </div>
+                           </div>
+                           <div class="billet-image-container">
+                               <img class="billet-image" src="data:image/png;base64,{base64.b64encode(genuine_img if is_genuine else fake_img).decode('utf-8')}">
+                           </div>
+                       </div>
+                       """, unsafe_allow_html=True)
         
         # Affichons  les caractéristiques sous forme de tableau
         st.markdown("---")
